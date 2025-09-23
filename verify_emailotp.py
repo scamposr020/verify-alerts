@@ -1,4 +1,4 @@
-import requests, json, os
+import requests, os
 from datetime import datetime, timedelta
 
 # 🔐 Paso 1: Obtener token de acceso
@@ -43,8 +43,15 @@ params = {
 
 try:
     logs_response = requests.get(logs_url, headers=headers_logs, params=params)
+    print("📡 Código de respuesta:", logs_response.status_code)
+    print("📄 Contenido bruto:", logs_response.text)
+
     logs_response.raise_for_status()
     logs = logs_response.json()
+except ValueError:
+    print("❌ La respuesta no es JSON válido:")
+    print(logs_response.text)
+    exit()
 except Exception as e:
     print("❌ Error al consultar logs:", e)
     exit()
