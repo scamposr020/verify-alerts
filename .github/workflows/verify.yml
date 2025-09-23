@@ -1,0 +1,31 @@
+name: IBM Verify EmailOTP Alerts
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Ejecuta cada hora
+  workflow_dispatch:      # Permite ejecución manual
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run alert script
+      env:
+        VERIFY_TOKEN_URL: ${{ secrets.VERIFY_TOKEN_URL }}
+        VERIFY_CLIENT_ID: ${{ secrets.VERIFY_CLIENT_ID }}
+        VERIFY_CLIENT_SECRET: ${{ secrets.VERIFY_CLIENT_SECRET }}
+        VERIFY_LOGS_URL: ${{ secrets.VERIFY_LOGS_URL }}
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      run: python verify_emailotp.py
