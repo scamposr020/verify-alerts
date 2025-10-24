@@ -1,0 +1,40 @@
+name: Test IBM Verify API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-api-call:
+    runs-on: ubuntu-latest
+    env:
+      VERIFY_TOKEN_URL: ${{ secrets.VERIFY_TOKEN_URL }}
+      VERIFY_CLIENT_ID: ${{ secrets.VERIFY_CLIENT_ID }}
+      VERIFY_CLIENT_SECRET: ${{ secrets.VERIFY_CLIENT_SECRET }}
+      VERIFY_LOGS_URL: ${{ secrets.VERIFY_LOGS_URL }}
+    steps:
+      - name: Get access token
+        run: |
+          echo "🔐 Solicitando token..."
+          response=$(curl -s -X POST "$VERIFY_TOKEN_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials" \
+            -d "scope=openid" \
+            -d "client_id=$VERIFY_CLIENT_ID" \
+            -d "client_secret=$VERIFY_CLIENT_SECRET")
+
+          echo "📄 Token response preview:"
+          echo "$response" | head -n 20
+
+          export ACCESS_TOKEN=$(echo "$response" | jq -r '.access_token')
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+      - name: Test audit logs endpoint
+        run: |
+          echo "📡 Consultando logs MFA..."
+          curl -s -X GET "$VERIFY_LOGS_URL?eventType=MFA" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Accept: application/json" \
+            -o response.txt
+
+          echo "📄 Vista previa de respuesta:"
+          head -n 20 response.txt
