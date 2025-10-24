@@ -26,7 +26,7 @@ except Exception as e:
     print("❌ Error al obtener token:", e)
     exit()
 
-# 🕒 Paso 2: Consultar logs de la última hora
+# 🕒 Paso 2: Consultar logs de MFA de la última hora
 logs_url = os.environ.get("VERIFY_LOGS_URL")
 end_time = datetime.utcnow()
 start_time = end_time - timedelta(hours=1)
@@ -38,14 +38,12 @@ headers_logs = {
 params = {
     "start": start_time.isoformat() + "Z",
     "end": end_time.isoformat() + "Z",
-    "filter": "EmailOTP AND success"
+    "filter": "eventType eq MFA"
 }
 
 try:
     logs_response = requests.get(logs_url, headers=headers_logs, params=params)
     print("📡 Código de respuesta:", logs_response.status_code)
-    print("📄 Contenido bruto:", logs_response.text)
-
     logs_response.raise_for_status()
     logs = logs_response.json()
 except ValueError:
@@ -56,17 +54,30 @@ except Exception as e:
     print("❌ Error al consultar logs:", e)
     exit()
 
-# 📢 Paso 3: Enviar alerta si hay eventos
-if logs:
-    slack_webhook = os.environ.get("SLACK_WEBHOOK")
-    message = {
-        "text": f"🚨 Se detectaron {len(logs)} eventos exitosos de EmailOTP en la última hora."
-    }
-    try:
-        slack_response = requests.post(slack_webhook, json=message)
-        slack_response.raise_for_status()
-        print("✅ Alerta enviada")
-    except Exception as e:
-        print("❌ Error al enviar alerta:", e)
-else:
-    print("ℹ️ Sin eventos EmailOTP exitosos")
+# 📊 Paso 3: Contar resultados por estado
+success_count = 0
+failure_count = 0
+
+for event in logs:
+    result = event.get("result", "").lower()
+    if result == "success":
+        success_count += 1
+    elif result == "failure":
+        failure_count += 1
+
+# 📢 Paso 4: Enviar resumen a Slack
+slack_webhook = os.environ.get("SLACK_WEBHOOK")
+message = {
+    "text": (
+        f"📊 *Resumen de actividad MFA (última hora)*\n"
+        f"✅ Éxitos: {success_count}\n"
+        f"❌ Fallos: {failure_count}"
+    )
+}
+
+try:
+    slack_response = requests.post(slack_webhook, json=message)
+    slack_response.raise_for_status()
+    print("✅ Resumen enviado a Slack")
+except Exception as e:
+    print("❌ Error al enviar alerta:", e)
